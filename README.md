@@ -2,7 +2,7 @@
 
 This role creates a systemd based outgoing ssh tunnel.
 
-**Security Note:** During the playbook run the involved ssh hostkeys of the remote and maybe the jump host are added without being asked. Please verify the keys in the known_hosts manually.
+**Security Note:** During the playbook run the involved ssh host keys of the remote and maybe the jump host are added without being asked. Please verify the keys in the known_hosts manually.
 
 ## Role Variables
 
@@ -20,8 +20,8 @@ This role creates a systemd based outgoing ssh tunnel.
 - ssh_tunnel_remote_host_ip # IP address of the end-point host in case of a jump host
 - ssh_tunnel_remote_interface # outgoing end-point interface ip
 - ssh_tunnel_user_jump # restricted user - account will be created - defaults to ssh_tunnel_user_remote
-- ssh_tunnel_user_local # resticted user - account will be created
-- ssh_tunnel_user_remote # resticted user - account will be created
+- ssh_tunnel_user_local # restricted user - account will be created
+- ssh_tunnel_user_remote # restricted user - account will be created
 - storage_dir_base # local storage base
 
 ## Examples
@@ -66,7 +66,7 @@ This role creates a systemd based outgoing ssh tunnel.
     ssh_tunnel_name: "nsupdate_example_de"
     ssh_tunnel_jump_host: "jumphost.example.de"
     ssh_tunnel_remote_host: "dns-behind-jumphost.example.de"
-    ssh_tunnel_remote_host_ip: "192.168.1.10" # required in case of a jumphost
+    ssh_tunnel_remote_host_ip: "192.168.1.10" # required in case of a jump host
     ssh_tunnel_user_local: "ssh-tunnel-user" # optional
     ssh_tunnel_user_remote: "ssh-tunnel-user" # optional
     ssh_tunnel_local_port: "1053"

@@ -1,0 +1,18 @@
+[Unit]
+Description=Persistent SSH Tunnel {{ ssh_tunnel_name }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/bash -c 'ssh-agent -a /tmp/ssh-tunnel-{{ ssh_tunnel_name }}-agent.sock > /tmp/ssh-tunnel-{{ ssh_tunnel_name }}-env'
+ExecStart=/bin/bash -c 'source /tmp/ssh-tunnel-{{ ssh_tunnel_name }}-env; ssh-add {{ _ssh_tunnel_data_dir ~ '/id_ed25519' }}; \
+  ssh {{ ssh_tunnel_user_remote if ssh_tunnel_user_remote is truthy else 'root' }}@{{ _ssh_remote_host_ip if _ssh_jump_host is truthy else _ssh_remote_host }}{% if _ssh_jump_host is truthy %} -J {{ ssh_tunnel_user_jump if ssh_tunnel_user_jump is truthy else 'root' }}@{{ _ssh_jump_host }}{% endif %} -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -L {{ ssh_tunnel_local_interface | d('0.0.0.0') }}:{{ ssh_tunnel_local_port }}:{{ ssh_tunnel_remote_interface | d('localhost') }}:{{ ssh_tunnel_remote_port }}'
+ExecStartPost=/bin/bash -c 'source /tmp/ssh-tunnel-{{ ssh_tunnel_name }}-env; sleep 1; ssh-add -D; kill $SSH_AGENT_PID; rm /tmp/ssh-tunnel-{{ ssh_tunnel_name }}-env'
+Restart=always
+RestartSec=60
+Environment="SSH_AUTH_SOCK=/tmp/ssh-tunnel-{{ ssh_tunnel_name }}-agent.sock"
+Environment="SSH_AGENT_PID="
+
+[Install]
+WantedBy=multi-user.target

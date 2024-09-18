@@ -1,0 +1,10 @@
+---
+
+exclude_paths:
+  - .vscode
+
+skip_list:
+  - name[casing]
+  - name[template]
+  - role-name
+  - var-naming[no-role-prefix]

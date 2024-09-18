@@ -1,0 +1,22 @@
+---
+name: Template based CI workflow
+'on':
+  # pull_request:
+  # schedule:
+  #   - cron: "0 4 * * 5"
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+
+defaults:
+  run:
+    working-directory: 'sleif.ws'
+
+jobs:
+  build:
+    uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
+    secrets:
+      GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}

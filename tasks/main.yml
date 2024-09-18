@@ -1,0 +1,176 @@
+---
+
+- name: Set fact _rootless_local
+  ansible.builtin.set_fact:
+    _rootless_local: "{{ true if ssh_tunnel_user_local is truthy and ssh_tunnel_user_local != 'root' else false }}"
+  tags: always
+
+- name: Block to handle local user account
+  when: _rootless_local | bool
+  block:
+    - name: Create restricted user account on local host
+      ansible.builtin.user:
+        name: "{{ ssh_tunnel_user_local }}"
+        comment: "ssh-tunnel user"
+        password: '!'
+        system: true
+        home: "{{ storage_dir_base + '/' + ssh_tunnel_user_local }}"
+      register: _user_local_info
+    - name: Create key file directory
+      become: true
+      become_user: "{{ ssh_tunnel_user_local }}"
+      ansible.builtin.file:
+        path: "{{ _user_local_info.home + '/.config/systemd/user/' }}"
+        state: directory
+        owner: "{{ ssh_tunnel_user_local }}"
+        mode: '0700'
+    - name: Enable systemd linger mode for ssh_tunnel_user_local user
+      ansible.builtin.command:
+        cmd: loginctl enable-linger {{ ssh_tunnel_user_local }}
+        creates: "{{ '/var/lib/systemd/linger/' + ssh_tunnel_user_local }}"
+    - name: Start systemd usr manager for user {{ ssh_tunnel_user_local }}
+      ansible.builtin.systemd_service:
+        name: "{{ 'user@' ~ _user_local_info.uid ~ '.service' }}"
+        daemon_reload: true
+        # scope: "{{ _systemd_scope }}"
+        state: "started"
+
+- name: Get account info for local account
+  ansible.builtin.user:
+    name: "{{ ssh_tunnel_user_local if ssh_tunnel_user_local is truthy else 'root' }}"
+    comment: "ssh-tunnel user"
+    password: '!'
+    system: true
+    home: "{{ storage_dir_base + '/' + ssh_tunnel_user_local if ssh_tunnel_user_local is truthy else '/root' }}"
+  check_mode: true
+  changed_when: false
+  register: _user_local_info
+
+- name: Ensure .ssh directory exists
+  ansible.builtin.file:
+    path: "{{ _user_local_info.home }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ _user_local_info.uid }}"
+    group: "{{ _user_local_info.group }}"
+
+- name: Set facts depending on _rootless_local
+  ansible.builtin.set_fact:
+    _storage_dir_base: "{{ _user_local_info.home + '/ssh-tunnel' if _rootless_local | bool else storage_dir_base + '/ssh-tunnel' }}"
+    _owner: "{{ ssh_tunnel_user_local if _rootless_local | bool else 'root' }}"
+    _systemd_scope: "{{ 'user' if _rootless_local | bool else 'system' }}"
+    _systemd_service_files_dir: "{{ _user_local_info.home + '/.config/systemd/user' if _rootless_local | bool else '/etc/systemd/system/' }}"
+    _xdg_runtime_dir: "/run/user/{{ _user_local_info.uid }}"
+  changed_when: false
+
+- name: Set additional facts for {{ ssh_tunnel_name }}
+  ansible.builtin.set_fact:
+    _ssh_tunnel_data_dir: "{{ _storage_dir_base }}/{{ ssh_tunnel_name }}"
+    _ssh_remote_host: "{{ ssh_tunnel_remote_host }}"
+    _ssh_remote_host_ip: "{{ ssh_tunnel_remote_host_ip | d('') }}"
+    _ssh_jump_host: "{{ ssh_tunnel_jump_host | d('') }}"
+
+- name: Local ssh preparation block
+  become: "{{ _rootless_local | d(true) | bool }}"
+  become_user: "{{ ssh_tunnel_user_local if _rootless_local | d(true) | bool else omit }}"
+  block:
+    - name: Create key file directory
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0700'
+      loop:
+        - "{{ _ssh_tunnel_data_dir }}"
+
+    - name: Generate openssh keypair
+      community.crypto.openssh_keypair:
+        path: "{{ _ssh_tunnel_data_dir ~ '/id_ed25519'}}"
+        comment: "ssh-tunnel {{ ssh_tunnel_name }}"
+        type: ed25519
+        regenerate: full_idempotence
+        passphrase: ""
+
+    - name: Slurp public key
+      ansible.builtin.slurp:
+        src: "{{ _ssh_tunnel_data_dir ~ '/id_ed25519.pub' }}"
+      register: _public_key
+
+- name: Block to handle the jump host
+  when: _ssh_jump_host is truthy
+  block:
+    - name: Add jump host to known_hosts
+      ansible.builtin.known_hosts:
+        path: "{{ _user_local_info.home }}/.ssh/known_hosts"
+        name: "{{ _ssh_jump_host }}"
+        key: "{{ lookup('pipe', 'ssh-keyscan ' ~ _ssh_jump_host) }}"
+    - name: delegate to jump host
+      delegate_to: "{{ _ssh_jump_host if _ssh_jump_host is truthy else omit }}"
+      block:
+        - name: Create restricted user account on jump host
+          ansible.builtin.user:
+            name: "{{ ssh_tunnel_user_jump }}"
+            comment: "Just handle authorized keys"
+            password: '!'
+            system: true
+            shell: "/sbin/nologin"
+          when: ssh_tunnel_user_jump is truthy
+
+        - name: Push public key to jumphost
+          ansible.posix.authorized_key:
+            key: "{{ _public_key['content'] | b64decode }}"
+            manage_dir: false
+            key_options: 'no-pty,no-agent-forwarding,no-X11-forwarding,no-user-rc,command="/bin/false"'
+            user: "{{ ssh_tunnel_user_jump if ssh_tunnel_user_jump is truthy else 'root' }}"
+
+- name: Block to handle the remote host
+  when: _ssh_remote_host is truthy
+  block:
+    - name: delegate to remote host
+      delegate_to: "{{ _ssh_remote_host }}"
+      block:
+        - name: Create restricted user account on remote host
+          ansible.builtin.user:
+            name: "{{ ssh_tunnel_user_remote }}"
+            comment: "Just handle authorized keys"
+            password: '!'
+            system: true
+            shell: "/sbin/nologin"
+          when: ssh_tunnel_user_remote is truthy
+
+        - name: Push public key to the _ssh_remote_host
+          ansible.posix.authorized_key:
+            key: "{{ _public_key['content'] | b64decode }}"
+            manage_dir: false
+            key_options: 'no-pty,no-agent-forwarding,no-X11-forwarding,no-user-rc,command="/bin/false"'
+            user: "{{ ssh_tunnel_user_remote if ssh_tunnel_user_remote is truthy else 'root' }}"
+
+        - name: Get public host keys from remote host
+          ansible.builtin.command: |
+            ssh-keyscan {{ _ssh_remote_host_ip if _ssh_jump_host is truthy else _ssh_remote_host }}
+          register: _known_hosts_keys_remote
+          changed_when: false
+
+    - name: Add remote host to known_hosts
+      ansible.builtin.known_hosts:
+        path: "{{ _user_local_info.home }}/.ssh/known_hosts"
+        name: "{{ _ssh_remote_host_ip if _ssh_jump_host is truthy else _ssh_remote_host }}"
+        key: "{{ _known_hosts_keys_remote.stdout if _ssh_jump_host is truthy else lookup('pipe', 'ssh-keyscan ' ~ _ssh_remote_host) }}"
+
+- name: Write systemd template
+  ansible.builtin.template:
+    dest: "{{ _systemd_service_files_dir ~ '/ssh-tunnel-' ~ ssh_tunnel_name ~ '.service' }}"
+    src: persistent_ssh_tunnel.service.j2
+    mode: '0644'
+  register: _systemd_unit_state
+
+- name: Start/restart systemd service for {{ _systemd_service_files_dir ~ '/ssh-tunnel-' ~ ssh_tunnel_name ~ '.service' }}
+  become: "{{ _rootless_local | d(true) | bool }}"
+  become_user: "{{ ssh_tunnel_user_local if _rootless_local | d(true) | bool else omit }}"
+  environment:
+    XDG_RUNTIME_DIR: "{{ _xdg_runtime_dir }}"
+  ansible.builtin.systemd_service:
+    name: "{{ 'ssh-tunnel-' ~ ssh_tunnel_name ~ '.service' }}"
+    daemon_reload: true
+    enabled: true
+    scope: "{{ _systemd_scope }}"
+    state: "{{ 'restarted' if _systemd_unit_state.changed | bool else 'started' }}"

@@ -1,5 +1,6 @@
 ---
 
+ssh_tunnel_mode: '-L'
 ssh_tunnel_user_local: ''
 ssh_tunnel_user_remote: ''
 ssh_tunnel_user_jump: '{{ ssh_tunnel_user_remote }}'

@@ -15,6 +15,7 @@ This role creates a systemd based outgoing ssh tunnel.
 
 ### Optional Variables
 
+- ssh_tunnel_mode # -L (forward) or -R (reverse) - defaults to '-L'; '-R' for lower ports (<1024) only possible as user root
 - ssh_tunnel_jump_host # FQDN of possibly jump host
 - ssh_tunnel_local_interface # locally listen interface ip
 - ssh_tunnel_remote_host_ip # IP address of the end-point host in case of a jump host

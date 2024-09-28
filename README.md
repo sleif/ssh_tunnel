@@ -1,6 +1,6 @@
 # sleif.ssh_tunnel
 
-This role creates a systemd based outgoing ssh tunnel.
+This role creates a systemd based outgoing (default) or reverse ssh tunnel.
 
 **Security Note:** During the playbook run the involved ssh host keys of the remote and maybe the jump host are added without being asked. Please verify the keys in the known_hosts manually.
 

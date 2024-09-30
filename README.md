@@ -34,18 +34,21 @@ This role creates a systemd based outgoing (forward, default) or reverse ssh tun
 Use required variables as above. Jump host is taken care of connecting to remote, if required.
 A listening port (ssh_tunnel_local_port) lower than 1024 requires ssh_tunnel_user_local to be root.
 
-```       -----------------------------------
+```
+       -----------------------------------
        | [0.0.0.0]:ssh_tunnel_local_port |
        -----------------------------------
                        |
                        V
 -------------------------------------------------
 | ssh_tunnel_remote_host:ssh_tunnel_remote_port |
--------------------------------------------------```
+-------------------------------------------------
+```
 
 and
 
-```        -----------------------------------
+```
+        -----------------------------------
         | [0.0.0.0]:ssh_tunnel_local_port |
         -----------------------------------
                         |
@@ -57,11 +60,13 @@ and
                         V
 -------------------------------------------------
 | ssh_tunnel_remote_host:ssh_tunnel_remote_port |
--------------------------------------------------```
+-------------------------------------------------
+```
 
 With added users:
 
-```       ----------------------------------------------------------
+```
+       ----------------------------------------------------------
        |  ssh_tunnel_user_local@[0.0.0.0]:ssh_tunnel_local_port |
        ----------------------------------------------------------
                                    |
@@ -73,7 +78,8 @@ With added users:
                                    V
 --------------------------------------------------------------------------
 |  ssh_tunnel_user_remote@ssh_tunnel_remote_host:ssh_tunnel_remote_port  |
---------------------------------------------------------------------------```
+--------------------------------------------------------------------------
+```
 
 Combine as and if needed, also for (ssh_tunnel_user_jump)
 

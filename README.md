@@ -46,7 +46,9 @@ A listening port (ssh_tunnel_local_port) lower than 1024 requires ssh_tunnel_use
 -------------------------------------------------
 ```
 SSH command generated:
+```code
 ssh root@ssh_tunnel_remote_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -L 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
+```
 
 With a jump host
 ```
@@ -65,7 +67,9 @@ With a jump host
 -------------------------------------------------
 ```
 SSH command generated:
+```code
 ssh root@ssh_tunnel_remote_host_ip -J root@ssh_tunnel_jump_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -L 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
+```
 
 
 With added users:
@@ -85,8 +89,9 @@ With added users:
 --------------------------------------------------------------------------
 ```
 SSH command generated - run as user-systemd unit (-> ssh_tunnel_user_local user):
+```code
 ssh ssh_tunnel_user_remote@ssh_tunnel_remote_host_ip -J ssh_tunnel_user_jump@ssh_tunnel_jump_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -L 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
-
+```
 
 Combine as and if needed, also for (ssh_tunnel_user_jump)
 

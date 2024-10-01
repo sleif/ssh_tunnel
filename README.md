@@ -30,6 +30,18 @@ This role creates a systemd based outgoing (forward, default) or reverse ssh tun
 
 ## Usage
 
+### Definition
+
+Host Local - the host executing the ssh command
+Remote - the host ssh connects to via ssh standard port 22
+Jump - intermediary host used to connect from Host Local to Remote.
+Target - the host connected to from Remote
+
+Not covered (yet?):
+- ssh connect port - only standard port 22
+- extra options to the ssh process
+
+
 ### Forward tunnel from host local ip to remote
 
 Use required variables as above. Jump host is taken care of connecting to remote, if required.
@@ -118,7 +130,7 @@ SSH command generated:
 ssh root@ssh_tunnel_remote_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -L ssh_tunnel_target_host_ip:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
 ```
 
-With a jump host
+With a jump host:
 ```
 ---------------------------------------------------
 | ssh_tunnel_target_host_ip:ssh_tunnel_local_port |
@@ -167,9 +179,137 @@ ssh ssh_tunnel_user_remote@ssh_tunnel_remote_host_ip -J ssh_tunnel_user_jump@ssh
 
 Listening port (ssh_tunnel_remote_port) on remote (ssh_tunnel_remote_host) is being forwarded to host local (ssh_tunnel_local_interface) port (ssh_tunnel_local_port). Jump host to connect to remote is taken care of, if defined (default: none). A listening port lower than 1024 requires ssh_tunnel_user_remote to be root. ssh_tunnel_mode needs to be set to '-R'
 
-### Reverse tunnel from remote to target
+```
+-------------------------------------------------
+| ssh_tunnel_remote_host:ssh_tunnel_remote_port |
+-------------------------------------------------
+                       |
+                       V
+       -----------------------------------
+       | [0.0.0.0]:ssh_tunnel_local_port |
+       -----------------------------------
+```
+SSH command generated:
+```code
+ssh root@ssh_tunnel_remote_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
+```
+
+With a jump host
+```
+-------------------------------------------------
+| ssh_tunnel_remote_host:ssh_tunnel_remote_port |
+-------------------------------------------------
+                        |
+                        V
+             ------------------------
+             | ssh_tunnel_jump_host |
+             ------------------------
+                        |
+                        V
+        -----------------------------------
+        | [0.0.0.0]:ssh_tunnel_local_port |
+        -----------------------------------
+```
+SSH command generated:
+```code
+ssh root@ssh_tunnel_remote_host_ip -J root@ssh_tunnel_jump_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
+```
+
+
+With added users:
+```
+--------------------------------------------------------------------------
+|  ssh_tunnel_user_remote@ssh_tunnel_remote_host:ssh_tunnel_remote_port  |
+--------------------------------------------------------------------------
+                                   |
+                                   V
+             ---------------------------------------------
+             | ssh_tunnel_user_jump@ssh_tunnel_jump_host |
+             ---------------------------------------------
+                                   |
+                                   V
+       ----------------------------------------------------------
+       |  ssh_tunnel_user_local@[0.0.0.0]:ssh_tunnel_local_port |
+       ----------------------------------------------------------
+```
+SSH command generated - run as user-systemd unit (-> ssh_tunnel_user_local user):
+```code
+ssh ssh_tunnel_user_remote@ssh_tunnel_remote_host_ip -J ssh_tunnel_user_jump@ssh_tunnel_jump_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
+```
+
+Combine as and if needed, also for (ssh_tunnel_user_jump).
+
+
+
+### Reverse tunnel from remote to (non-local) target
 
 Listening port on remote is forwarded to target (ssh_tunnel_target_host_ip) port (ssh_tunnel_target_port). Jump host to connect to remote is taken care of, if defined (default: none). A listening port lower than 1024 requires ssh_tunnel_user_remote to be root.
+
+```
+ -------------------------------------------------
+ | ssh_tunnel_remote_host:ssh_tunnel_remote_port |
+ -------------------------------------------------
+                       |
+                       V
+---------------------------------------------------
+| ssh_tunnel_target_host_ip:ssh_tunnel_local_port |
+---------------------------------------------------
+```
+SSH command generated:
+```code
+ssh root@ssh_tunnel_remote_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 0.0.0.0:ssh_tunnel_local_port:ssh_tunnel_target_host_ip:ssh_tunnel_remote_port
+```
+
+With a jump host
+```
+ -------------------------------------------------
+ | ssh_tunnel_remote_host:ssh_tunnel_remote_port |
+ -------------------------------------------------
+                         |
+                         V
+              ------------------------
+              | ssh_tunnel_jump_host |
+              ------------------------
+                         |
+                         V
+---------------------------------------------------
+| ssh_tunnel_target_host_ip:ssh_tunnel_local_port |
+---------------------------------------------------
+```
+SSH command generated:
+```code
+ssh root@ssh_tunnel_remote_host_ip -J root@ssh_tunnel_jump_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 0.0.0.0:ssh_tunnel_local_port:ssh_tunnel_target_host_ip:ssh_tunnel_remote_port
+```
+
+
+With added users:
+```
+--------------------------------------------------------------------------
+|  ssh_tunnel_user_remote@ssh_tunnel_remote_host:ssh_tunnel_remote_port  |
+--------------------------------------------------------------------------
+                                   |
+                                   V
+             ---------------------------------------------
+             | ssh_tunnel_user_jump@ssh_tunnel_jump_host |
+             ---------------------------------------------
+                                   |
+                                   V
+       ----------------------------------------------------------
+       |  ssh_tunnel_user_target@[0.0.0.0]:ssh_tunnel_local_port |
+       ----------------------------------------------------------
+```
+SSH command generated - run as user-systemd unit (-> ssh_tunnel_user_local user):
+```code
+ssh ssh_tunnel_user_remote@ssh_tunnel_remote_host_ip -J ssh_tunnel_user_jump@ssh_tunnel_jump_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
+```
+
+
+If you use a FQDN for ssh_tunnel_target_host_ip you need to ensure, that ssh_tunnel_target_host_ip is resolveable and reachable by ssh_tunnel_remote_host and/or ssh_tunnel_jump_host.
+
+Combine as and if needed, also for (ssh_tunnel_user_jump).
+
+Only if ssh_tunnel_target_host_ip is defined, ssh_tunnel_user_target is properly taken care of.
+
 
 
 ## Examples
@@ -231,3 +371,4 @@ MIT
 ## Author Information
 
 Created in 2024 by Sebastian Berthold
+Extended in 2024 by Jens Gecius

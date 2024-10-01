@@ -10,13 +10,13 @@ This role creates a systemd based outgoing (forward, default) or reverse ssh tun
 
 - ssh_tunnel_name
 - ssh_tunnel_remote_host # FQDN for outgoing end-point
-- ssh_tunnel_local_port # locally listen port
+- ssh_tunnel_local_port # locally listen port; lower ports (<1024) only possible as user root
+- ssh_tunnel_jump_host # FQDN of possibly jump host
 - ssh_tunnel_remote_port # outgoing end-point
 
 ### Optional Variables
 
-- ssh_tunnel_mode # -L (forward) or -R (reverse) - defaults to '-L'; lower ports (<1024) only possible as user root
-- ssh_tunnel_jump_host # FQDN of possibly jump host
+- ssh_tunnel_mode # -L (forward) or -R (reverse) - defaults to '-L'
 - ssh_tunnel_local_interface # locally listen interface ip; only useable for host local ip - defaults to 0.0.0.0 (all interfaces)
 - ssh_tunnel_remote_host_ip # IP address of the end-point host in case of a jump host
 - ssh_tunnel_remote_interface # outgoing end-point interface ip - defaults to localhost
@@ -32,10 +32,10 @@ This role creates a systemd based outgoing (forward, default) or reverse ssh tun
 
 ### Definition
 
-- **Host Local** - the host executing the ssh command\n
-- **Remote** - the host ssh connects to via ssh standard port 22\n
-- **Jump** - intermediary host used to connect from Host Local to Remote.\n
-- **Target** - the host connected to from Remote\n
+- **Host Local** - the host executing the ssh command
+- **Remote** - the host ssh connects to via ssh standard port 22
+- **Jump** - intermediary host used to connect from Host Local to Remote
+- **Target** - the host connected to from Remote
 
 Not covered (yet?):
 - ssh connect port - only standard port 22

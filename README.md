@@ -17,14 +17,15 @@ This role creates a systemd based outgoing (forward, default) or reverse ssh tun
 
 - ssh_tunnel_mode # -L (forward) or -R (reverse) - defaults to '-L'; lower ports (<1024) only possible as user root
 - ssh_tunnel_jump_host # FQDN of possibly jump host
-- ssh_tunnel_local_interface # locally listen interface ip; only useable for host local ip - defaults to none (-> 0.0.0.0)
+- ssh_tunnel_local_interface # locally listen interface ip; only useable for host local ip - defaults to 0.0.0.0 (all interfaces)
 - ssh_tunnel_remote_host_ip # IP address of the end-point host in case of a jump host
-- ssh_tunnel_remote_interface # outgoing end-point interface ip
+- ssh_tunnel_remote_interface # outgoing end-point interface ip - defaults to localhost
 - ssh_tunnel_target_host_ip # IP address of the target endpoint, if not local ip (= ssh_local_interface) - defaults to none
+- ssh_tunnel_target_bind_ip # IP of target local endpoint interface - defaults to 0.0.0.0 (all interfaces)
 - ssh_tunnel_user_jump # restricted user - account will be created - defaults to ssh_tunnel_user_remote
-- ssh_tunnel_user_local # restricted user - account will be created
-- ssh_tunnel_user_remote # restricted user - account will be created
-- ssh_tunnel_user_target # restricted user - account will be created (if set and target_host not local)
+- ssh_tunnel_user_local # restricted user - account will be created - defaults to root
+- ssh_tunnel_user_remote # restricted user - account will be created - defaults to root
+- ssh_tunnel_user_target # restricted user - account will be created (if set and ssh_tunnel_target_host_ip is set) - defaults to root
 - storage_dir_base # local storage base
 
 ## Usage
@@ -44,9 +45,10 @@ A listening port (ssh_tunnel_local_port) lower than 1024 requires ssh_tunnel_use
 | ssh_tunnel_remote_host:ssh_tunnel_remote_port |
 -------------------------------------------------
 ```
+SSH command generated:
+ssh root@ssh_tunnel_remote_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -L 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
 
-and
-
+With a jump host
 ```
         -----------------------------------
         | [0.0.0.0]:ssh_tunnel_local_port |
@@ -62,9 +64,11 @@ and
 | ssh_tunnel_remote_host:ssh_tunnel_remote_port |
 -------------------------------------------------
 ```
+SSH command generated:
+ssh root@ssh_tunnel_remote_host_ip -J root@ssh_tunnel_jump_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -L 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
+
 
 With added users:
-
 ```
        ----------------------------------------------------------
        |  ssh_tunnel_user_local@[0.0.0.0]:ssh_tunnel_local_port |
@@ -80,6 +84,9 @@ With added users:
 |  ssh_tunnel_user_remote@ssh_tunnel_remote_host:ssh_tunnel_remote_port  |
 --------------------------------------------------------------------------
 ```
+SSH command generated - run as user-systemd unit (-> ssh_tunnel_user_local user):
+ssh ssh_tunnel_user_remote@ssh_tunnel_remote_host_ip -J ssh_tunnel_user_jump@ssh_tunnel_jump_host -N -o ExitOnForwardFailure=yes -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -L 0.0.0.0:ssh_tunnel_local_port:localhost:ssh_tunnel_remote_port
+
 
 Combine as and if needed, also for (ssh_tunnel_user_jump)
 

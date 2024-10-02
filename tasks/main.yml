@@ -68,6 +68,8 @@
     _ssh_tunnel_data_dir: "{{ _storage_dir_base }}/{{ ssh_tunnel_name }}"
     _ssh_remote_host: "{{ ssh_tunnel_remote_host }}"
     _ssh_remote_host_ip: "{{ ssh_tunnel_remote_host_ip | d('') }}"
+    _ssh_target_host_ip: "{{ ssh_tunnel_target_host_ip | d('') }}"
+    _ssh_tunnel_mode: "{{ ssh_tunnel_mode | d('-L') }}"
     _ssh_jump_host: "{{ ssh_tunnel_jump_host | d('') }}"
 
 - name: Local ssh preparation block
@@ -155,6 +157,40 @@
         path: "{{ _user_local_info.home }}/.ssh/known_hosts"
         name: "{{ _ssh_remote_host_ip if _ssh_jump_host is truthy else _ssh_remote_host }}"
         key: "{{ _known_hosts_keys_remote.stdout if _ssh_jump_host is truthy else lookup('pipe', 'ssh-keyscan ' ~ _ssh_remote_host) }}"
+
+- name: Block to handle the target host
+  when: _ssh_target_host_ip is truthy
+  block:
+    - name: delegate to target host
+      delegate_to: "{{ _ssh_target_host_ip }}"
+      block:
+        - name: Create restricted user account on target host
+          ansible.builtin.user:
+            name: "{{ ssh_tunnel_user_target }}"
+            comment: "Just handle authorized keys"
+            password: '!'
+            system: true
+            shell: "/sbin/nologin"
+          when: ssh_tunnel_user_target is truthy
+
+        - name: Push public key to the _ssh_target_host
+          ansible.posix.authorized_key:
+            key: "{{ _public_key['content'] | b64decode }}"
+            manage_dir: false
+            key_options: 'no-pty,no-agent-forwarding,no-X11-forwarding,no-user-rc,command="/bin/false"'
+            user: "{{ ssh_tunnel_user_target if ssh_tunnel_user_target is truthy else 'root' }}"
+
+        - name: Get public host keys from target host
+          ansible.builtin.command: |
+            ssh-keyscan {{ _ssh_target_host_ip if ssh_target_host_ip is truthy }}
+          register: _known_hosts_keys_target
+          changed_when: false
+
+    - name: Add remote host to known_hosts
+      ansible.builtin.known_hosts:
+        path: "{{ _user_local_info.home }}/.ssh/known_hosts"
+        name: "{{ _ssh_target_host_ip }}"
+        key: "{{ _known_hosts_keys_target.stdout }}"
 
 - name: Write systemd template
   ansible.builtin.template:

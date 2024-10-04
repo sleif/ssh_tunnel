@@ -69,7 +69,9 @@
     _ssh_remote_host: "{{ ssh_tunnel_remote_host }}"
     _ssh_remote_host_ip: "{{ ssh_tunnel_remote_host_ip | d('') }}"
     _ssh_target_host_ip: "{{ ssh_tunnel_target_host_ip | d('') }}"
+    _ssh_target_bind_ip: "{{ ssh_tunnel_target_bind_ip | d('') }}"
     _ssh_tunnel_mode: "{{ ssh_tunnel_mode | d('-L') }}"
+    _ssh_target_port: "{{ _ssh_tunnel_target_port | d('') }}"
     _ssh_jump_host: "{{ ssh_tunnel_jump_host | d('') }}"
 
 - name: Local ssh preparation block
@@ -182,7 +184,7 @@
 
         - name: Get public host keys from target host
           ansible.builtin.command: |
-            ssh-keyscan {{ _ssh_target_host_ip if ssh_target_host_ip is truthy }}
+            ssh-keyscan {{ _ssh_target_host_ip if _ssh_target_host_ip is truthy }}
           register: _known_hosts_keys_target
           changed_when: false
 

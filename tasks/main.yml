@@ -130,7 +130,7 @@
   when: _ssh_remote_host is truthy
   block:
     - name: delegate to remote host
-      delegate_to: "{{ _ssh_remote_host }}"
+      delegate_to: "{{ _ssh_remote_host if _ssh_remote_host is truthy else omit }}"
       block:
         - name: Create restricted user account on remote host
           ansible.builtin.user:
@@ -164,7 +164,7 @@
   when: _ssh_target_host_ip is truthy
   block:
     - name: delegate to target host
-      delegate_to: "{{ _ssh_target_host_ip }}"
+      delegate_to: "{{ _ssh_target_host_ip if _ssh_target_host_ip is truthy else omit }}"
       block:
         - name: Create restricted user account on target host
           ansible.builtin.user:

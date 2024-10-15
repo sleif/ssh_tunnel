@@ -66,13 +66,13 @@
 - name: Set additional facts for {{ ssh_tunnel_name }}
   ansible.builtin.set_fact:
     _ssh_tunnel_data_dir: "{{ _storage_dir_base }}/{{ ssh_tunnel_name }}"
+    _ssh_tunnel_mode: "{{ ssh_tunnel_mode | d('-L') }}"
+    _ssh_jump_host: "{{ ssh_tunnel_jump_host | d('') }}"
     _ssh_remote_host: "{{ ssh_tunnel_remote_host }}"
     _ssh_remote_host_ip: "{{ ssh_tunnel_remote_host_ip | d('') }}"
-    _ssh_target_host_ip: "{{ ssh_tunnel_target_host_ip | d('') }}"
     _ssh_target_bind_ip: "{{ ssh_tunnel_target_bind_ip | d('') }}"
-    _ssh_tunnel_mode: "{{ ssh_tunnel_mode | d('-L') }}"
+    _ssh_target_host_ip: "{{ ssh_tunnel_target_host_ip | d('') }}"
     _ssh_target_port: "{{ _ssh_tunnel_target_port | d('') }}"
-    _ssh_jump_host: "{{ ssh_tunnel_jump_host | d('') }}"
 
 - name: Local ssh preparation block
   become: "{{ _rootless_local | d(true) | bool }}"

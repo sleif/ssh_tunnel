@@ -24,6 +24,12 @@
         state: directory
         owner: "{{ ssh_tunnel_user_local }}"
         mode: '0700'
+    - name: Set XDG_RUNTIME_DIR in podman user .bashrc
+      become: true
+      become_user: "{{ ssh_tunnel_user_local }}"
+      ansible.builtin.lineinfile:
+        path: "{{ _user_local_info.home + '/.bashrc' }}"
+        line: "{{ 'export XDG_RUNTIME_DIR=/run/user/' + _user_local_info.uid | string }}"
     - name: Enable systemd linger mode for ssh_tunnel_user_local user
       ansible.builtin.command:
         cmd: loginctl enable-linger {{ ssh_tunnel_user_local }}
